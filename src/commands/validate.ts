@@ -4,6 +4,7 @@ import select from "@inquirer/select";
 import {SleekCommand} from "../sleek-command.js";
 import {execSync, spawnSync} from "child_process";
 import {destructureAddonKey, getAddonKey, getCurrentAddons} from "../utils.js";
+import ChartValidatorService from "../services/validate.js";
 
 export default class Validate extends SleekCommand {
   static description = `
@@ -44,7 +45,7 @@ export default class Validate extends SleekCommand {
       const currentConf = this.configuration;
       const addons = getCurrentAddons(currentConf);
 
-      const selected: { name: string,  version: string } = await select({
+      const selected: { name: string, version: string } = await select({
         message: 'Which addon would you like to validate the configuration for?',
         choices: addons
       });
@@ -55,20 +56,16 @@ export default class Validate extends SleekCommand {
     }
     const chart = path.resolve(await this.pullHelmChart(addonKey));
 
-    // turns out using grep is the best way to do it lmao
-    // rip all the Windows users
-    const findCapabilities = spawnSync('grep', ['-Rile', '".Capabilities"', chart], { shell: true });
-    const findHooks = spawnSync('grep', ['-Rile', '"helm.sh/hook"', chart], { shell: true });
+    this.log(`Validating chart ${chart}`);
 
-    if (findCapabilities.stdout.toString() == "" && findHooks.stdout.toString() == "") {
-      this.log('No occurrences of .Capabilities or helm.sh/hook found in Helm chart');
+    const validatorService = new ChartValidatorService(this, { chart: chart});
 
-      this.configuration[addonKey].validated = false;
-    } else {
-      this.log("Found .Capabilities or helm.sh/hook in helm chart.");
-
-      this.configuration[addonKey].validated = true;
+    const validatorServiceResp = await validatorService.run();
+    if(!validatorServiceResp.success){
+      this.error(validatorServiceResp.error?.input!, validatorServiceResp.error?.options )
     }
+    this.log(validatorServiceResp.body)
+    // do something with the validated service response
   }
 
   private async pullHelmChart(addonKey: string): Promise<string> {

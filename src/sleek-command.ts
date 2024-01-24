@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import * as path from "path";
 import { Command, Config } from "@oclif/core";
+import * as fs from "node:fs";
+import path from "node:path";
 
 /**
  * A base command that provides common functionality for all Sleek Transformer commands:
@@ -42,10 +42,11 @@ export abstract class SleekCommand extends Command {
 
 export interface IConfig {
   [key: string]: {
-    region: string;
     accId: string;
     helmUrl: string;
+    kubeVersion: string;
     namespace: string;
+    region: string;
     validated: boolean;
   };
 }
